@@ -1,0 +1,8 @@
+# Rewrite root path to automatically route the public folder to the root url
+# This disables the ability to see the app folder
+# or have to choose the root folder upon navigation
+<IfModule mod_rewrite.c>
+    RewriteEngine on
+    RewriteRule ^$ public/ [L]
+    RewriteRule (.*) public/$1 [L]
+</IfModule>
