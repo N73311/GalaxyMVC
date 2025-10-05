@@ -20,24 +20,123 @@ class Database
             self::$data['posts'] = [
                 [
                     'id' => 1,
-                    'title' => 'Welcome to GalaxyMVC',
-                    'content' => 'This is a lightweight PHP MVC framework running with an in-memory database.',
-                    'author' => 'Admin',
-                    'created_at' => date('Y-m-d H:i:s', strtotime('-2 days'))
+                    'title' => '1. Creating a Controller',
+                    'content' => '<?php
+// app/controllers/Posts.php
+class Posts extends Controller {
+    public function index() {
+        $postModel = $this->model(\'Post\');
+        $posts = $postModel->getPosts();
+
+        $data = [
+            \'title\' => \'Posts\',
+            \'posts\' => $posts
+        ];
+
+        $this->view(\'posts/index\', $data);
+    }
+}',
+                    'author' => 'Framework Guide',
+                    'created_at' => date('Y-m-d H:i:s', strtotime('-5 days'))
                 ],
                 [
                     'id' => 2,
-                    'title' => 'MVC Architecture',
-                    'content' => 'GalaxyMVC implements the Model-View-Controller pattern for clean code organization.',
-                    'author' => 'Developer',
-                    'created_at' => date('Y-m-d H:i:s', strtotime('-1 day'))
+                    'title' => '2. Building a Model',
+                    'content' => '<?php
+// app/models/Post.php
+class Post {
+    private $db;
+
+    public function __construct() {
+        $this->db = new Database;
+    }
+
+    public function getPosts() {
+        $this->db->query(\'SELECT * FROM posts ORDER BY created_at DESC\');
+        return $this->db->getAsResultSet();
+    }
+
+    public function addPost($data) {
+        $this->db->query(\'INSERT INTO posts (title, content, author)
+                         VALUES (:title, :content, :author)\');
+        $this->db->bind(\':title\', $data[\'title\']);
+        $this->db->bind(\':content\', $data[\'content\']);
+        $this->db->bind(\':author\', $data[\'author\']);
+
+        return $this->db->execute();
+    }
+}',
+                    'author' => 'Framework Guide',
+                    'created_at' => date('Y-m-d H:i:s', strtotime('-4 days'))
                 ],
                 [
                     'id' => 3,
-                    'title' => 'Containerized Deployment',
-                    'content' => 'This application runs in Docker with PHP-FPM and Nginx, using in-memory data storage.',
-                    'author' => 'DevOps',
-                    'created_at' => date('Y-m-d H:i:s')
+                    'title' => '3. Rendering Views',
+                    'content' => '<!-- app/views/posts/index.php -->
+<div class="posts">
+    <h1><?php echo $data[\'title\']; ?></h1>
+
+    <?php foreach($data[\'posts\'] as $post): ?>
+        <article class="post">
+            <h2><?php echo $post->title; ?></h2>
+            <p><?php echo $post->content; ?></p>
+            <span>By <?php echo $post->author; ?></span>
+        </article>
+    <?php endforeach; ?>
+</div>
+
+// Views automatically receive $data variable
+// Header and footer included automatically',
+                    'author' => 'Framework Guide',
+                    'created_at' => date('Y-m-d H:i:s', strtotime('-3 days'))
+                ],
+                [
+                    'id' => 4,
+                    'title' => '4. Custom Routing System',
+                    'content' => '// URL Structure: /controller/method/params
+
+// Examples:
+/posts              → Posts::index()
+/posts/show/5       → Posts::show(5)
+/users/edit/3       → Users::edit(3)
+
+// Core.php handles routing automatically:
+$url = explode(\'/\', filter_var(rtrim($_GET[\'url\'], \'/\'), FILTER_SANITIZE_URL));
+
+$controller = ucwords($url[0]);
+$method = $url[1] ?? \'index\';
+$params = array_slice($url, 2);
+
+// Instantiate controller and call method
+$controller = new $controller;
+call_user_func_array([$controller, $method], $params);',
+                    'author' => 'Framework Guide',
+                    'created_at' => date('Y-m-d H:i:s', strtotime('-2 days'))
+                ],
+                [
+                    'id' => 5,
+                    'title' => '5. Database Abstraction Layer',
+                    'content' => '// PDO wrapper with prepared statements
+$db = new Database;
+
+// Query with parameter binding
+$db->query(\'SELECT * FROM users WHERE email = :email\');
+$db->bind(\':email\', $email);
+$user = $db->getAsSingleRecord();
+
+// Prevents SQL injection
+// Supports transactions
+// Simple, intuitive API
+
+// Available methods:
+- query($sql)           // Prepare query
+- bind($param, $value)  // Bind parameters
+- execute()             // Execute query
+- getAsResultSet()      // Get all rows as objects
+- getAsSingleRecord()   // Get single row as object
+- getRowCount()         // Get affected row count',
+                    'author' => 'Framework Guide',
+                    'created_at' => date('Y-m-d H:i:s', strtotime('-1 day'))
                 ]
             ];
 
