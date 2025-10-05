@@ -12,8 +12,8 @@ define('ROOT_MODEL_PATH', ROOT_APP_PATH . '/models/');
 define('ROOT_VIEW_PATH', ROOT_APP_PATH . '/views/');
 
 // GENERAL
-define('ROOT_URL', 'http://localhost:8888/php.mvc.framework/');
-define('SITE_NAME', 'MVC');
+define('ROOT_URL', '/');
+define('SITE_NAME', 'GalaxyMVC');
 
 define('HEADER_PATH', ROOT_APP_PATH . '/views/inc/header.php');
 define('FOOTER_PATH', ROOT_APP_PATH . '/views/inc/footer.php');
