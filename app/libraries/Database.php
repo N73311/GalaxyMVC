@@ -1,97 +1,140 @@
 <?php
 
 /*
- * PDO Database Class
- * Connect to the MySQL database
- * Creates prepared statements
- * Binds Values
- * Returns rows and results
+ * In-Memory Mock Database Class
+ * Simulates database operations without requiring MySQL
+ * Stores data in PHP arrays for containerized deployment
  */
 
 class Database
 {
-    private $host = DB_HOST;
-    private $user = DB_USER;
-    private $password = DB_PASSWORD;
-    private $dbName = DB_NAME;
-
-    private $dbHandler;
-    private $statement;
-    private $error;
+    private static $data = [];
+    private $currentQuery = '';
+    private $bindings = [];
+    private $result = [];
 
     public function __construct()
     {
-        // Setup DSN connection string
-        $dsn = 'mysql:host=' . $this->host . ';dbname=' . $this->dbName;
-        $options = array(
-            PDO::ATTR_PERSISTENT => true,
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-        );
+        // Initialize with sample data if empty
+        if (empty(self::$data['posts'])) {
+            self::$data['posts'] = [
+                [
+                    'id' => 1,
+                    'title' => 'Welcome to GalaxyMVC',
+                    'content' => 'This is a lightweight PHP MVC framework running with an in-memory database.',
+                    'author' => 'Admin',
+                    'created_at' => date('Y-m-d H:i:s', strtotime('-2 days'))
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'MVC Architecture',
+                    'content' => 'GalaxyMVC implements the Model-View-Controller pattern for clean code organization.',
+                    'author' => 'Developer',
+                    'created_at' => date('Y-m-d H:i:s', strtotime('-1 day'))
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Containerized Deployment',
+                    'content' => 'This application runs in Docker with PHP-FPM and Nginx, using in-memory data storage.',
+                    'author' => 'DevOps',
+                    'created_at' => date('Y-m-d H:i:s')
+                ]
+            ];
 
-        // Create a PDO instance
-        try {
-            $this->dbHandler = new PDO($dsn, $this->user, $this->password, $options);
-        } catch (PDOException $e) {
-            $this->error = $e->getMessage();
-            echo $this->error;
+            self::$data['users'] = [
+                [
+                    'id' => 1,
+                    'name' => 'Admin',
+                    'email' => 'admin@galaxymvc.com',
+                    'password' => password_hash('admin123', PASSWORD_DEFAULT),
+                    'created_at' => date('Y-m-d H:i:s')
+                ]
+            ];
         }
     }
 
     // Create base query
     public function query($sql)
     {
-        $this->statement = $this->dbHandler->prepare($sql);
+        $this->currentQuery = $sql;
+        $this->bindings = [];
+        $this->result = [];
     }
 
     // Bind values
     public function bind($param, $value, $type = null)
     {
-        if (is_null($type)) {
-            switch (true) {
-                case is_int($value):
-                    $type = PDO::PARAM_INT;
-                    break;
-                case is_bool($value):
-                    $type = PDO::PARAM_BOOL;
-                    break;
-                case is_null($value):
-                    $type = PDO::PARAM_NULL;
-                    break;
-                default:
-                    $type = PDO::PARAM_STR;
-                    break;
-            }
-        }
-
-        // Bind the values
-        $this->statement->bindValue($param, $value, $type);
+        $this->bindings[$param] = $value;
     }
 
     // Get result set as array of objects
     public function getAsResultSet()
     {
         $this->execute();
-        return $this->statement->fetchAll(PDO::FETCH_OBJ);
+        return array_map(function($item) {
+            return (object)$item;
+        }, $this->result);
     }
 
     // Execute the prepared statement
     public function execute()
     {
-        return $this->statement->execute();
-    }
+        // Parse the query to determine what operation to perform
+        $query = strtolower(trim($this->currentQuery));
 
+        if (strpos($query, 'select * from posts') !== false) {
+            // Return all posts
+            $this->result = self::$data['posts'];
+        } elseif (strpos($query, 'select * from users') !== false) {
+            // Return all users
+            $this->result = self::$data['users'];
+        } elseif (strpos($query, 'insert into posts') !== false) {
+            // Add a new post
+            $newPost = [
+                'id' => count(self::$data['posts']) + 1,
+                'title' => $this->bindings[':title'] ?? 'New Post',
+                'content' => $this->bindings[':content'] ?? $this->bindings[':body'] ?? 'Post content',
+                'author' => $this->bindings[':author'] ?? 'User',
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+            self::$data['posts'][] = $newPost;
+            $this->result = [$newPost];
+        } elseif (strpos($query, 'update posts') !== false) {
+            // Update a post
+            foreach (self::$data['posts'] as &$post) {
+                if (isset($this->bindings[':id']) && $post['id'] == $this->bindings[':id']) {
+                    if (isset($this->bindings[':title'])) $post['title'] = $this->bindings[':title'];
+                    if (isset($this->bindings[':content'])) $post['content'] = $this->bindings[':content'];
+                    if (isset($this->bindings[':body'])) $post['content'] = $this->bindings[':body'];
+                    $this->result = [$post];
+                    break;
+                }
+            }
+        } elseif (strpos($query, 'delete from posts') !== false) {
+            // Delete a post
+            self::$data['posts'] = array_filter(self::$data['posts'], function($post) {
+                return !isset($this->bindings[':id']) || $post['id'] != $this->bindings[':id'];
+            });
+            self::$data['posts'] = array_values(self::$data['posts']);
+        } else {
+            // Default empty result
+            $this->result = [];
+        }
+
+        return true;
+    }
 
     // Get a single record as an object
     public function getAsSingleRecord()
     {
         $this->execute();
-        return $this->statement->fetch(PDO::FETCH_OBJ);
+        return !empty($this->result) ? (object)$this->result[0] : false;
     }
 
     // Get the database row count
     public function getRowCount()
     {
-        return $this->statement->rowCount();
+        return count($this->result);
     }
 
 }
